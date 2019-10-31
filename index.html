@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+    .name{
+        border: 1px solid black;
+        padding: 4px;
+        display: inline-block;
+        margin: 4px;
+    }
+    .name:hover{
+        border: 1px solid grey;
+        cursor: pointer;
+        background: #f2f2f2;
+    }
+    .green {
+        background: #e66;
+    }
+    .red {
+        background: #6e6;
+    }
+    </style>
+</head>
+<body>
+    <div id="statuses"></div>
+    <form>
+        <input type="text" placeholder="name" name="name">
+        <input type="submit" value="add new">
+    </form>
+    <script>
+
+let mainData = false
+
+function notify(note) {
+  if (!("Notification" in window)) {
+    alert("This browser does not support desktop notification");
+  }
+//   else if (Notification.permission === "granted") {
+//     var notification = new Notification("Hi there!");
+//   }
+  else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(function (permission) {
+      if (permission === "granted") {
+        var notification = new Notification(note);
+      }
+    });
+  }
+}
+    const getStatus = async () => {
+        const req = await fetch(`data.json`)
+        const data = await req.json()
+        if (mainData) {
+            Object.keys(mainData).forEach((e) => {
+                if (data[e] !== mainData[e]) {
+                    notify(`${e} went ${data[e]*1 ? "here" : "away"}`)
+                }
+            })
+        }
+        mainData = data
+        return data;
+    }
+    const displayData = async () => {
+        const data = await getStatus()
+        clearStatuses()
+        Object.keys(data).forEach((e,i) => {
+            const here = data[e]*1 ? "here" : "away"
+            const name = createElement("p", [["class", `name ${here !== 'here' ? 'green' : 'red'}`]], `${e}: ${here}`)
+            name.addEventListener('click', () => {
+                fetch(`save.php?a=${e}&h=${data[e]*1 ? 0 : 1}`)
+                .then(() => setTimeout(() => displayData(),500))
+            })
+            name.oncontextmenu = () => {
+                const x = confirm(`Are you sure you want to delete ${e}?`)
+                if (x) {
+                    fetch(`save.php?a=${e}&d=1`)
+                    .then(() => setTimeout(() => displayData(),500))
+                }
+                return false
+            }
+            document.querySelector("#statuses").appendChild(name)
+        })
+    }
+    const clearStatuses = () => {
+        const number = document.querySelector("#statuses").children.length
+        for(i = 0; i < number; i++){
+            document.querySelector("#statuses").removeChild(document.querySelector("#statuses").children[0])
+        }
+    }
+    const createElement = (type, attributes = [], inner) => {
+        const el = document.createElement(type)
+        attributes.forEach(e=> el.setAttribute(e[0], e[1]))
+        if (inner) {
+            el.innerHTML = inner
+        }
+        return el
+    }
+    document.querySelector("form").addEventListener("submit", (e) => {
+        e.preventDefault()
+        fetch(`save.php?a=${e.target.name.value}&h=1`)
+        .then(() => setTimeout(() => displayData(),500))
+        e.target.name.value = ""
+    })
+
+    setInterval(() => {
+        displayData()
+    }, 15000)
+
+    displayData()
+    </script>
+</body>
+</html>
